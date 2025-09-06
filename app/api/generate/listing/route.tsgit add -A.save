@@ -1,0 +1,138 @@
+import { NextRequest, NextResponse } from "next/server";
+
+const SYSTEM = `
+You write MLS-style listing descriptions for residential properties.
+Be factual and neutral; avoid any Fair Housing risks (no references to protected classes,
+schools "quality", crime/safety, religion, or steering). Output:
+1) One concise paragraph (120–180 words)
+2) Then 3 short bullet highlights.
+`;
+
+export async function POST(req: NextRequest) {
+  try {
+    const { property, preferences } = await req.json();
+
+    const r = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: process.env.OPENAI_MODEL || "gpt-4o-mini",
+        temperature: 0.7,
+        messages: [
+          { role: "system", content: SYSTEM },
+          { role: "user", content: JSON.stringify({ property, preferences }) }
+        ],
+      }),
+    });
+
+    if (!r.ok) {
+      const t = await r.text();
+      return NextResponse.json({ error: t }, { status: 400 });
+    }
+
+    const data = await r.json();
+    const content = data?.choices?.[0]?.message?.content ?? "No content.";
+    return NextResponse.json({ content });
+  } catch (e: any) {
+    return NextResponse.json({ error: e.message }, { status: 500 });
+  }
+}
+
+const SYSTEM = `
+You write MLS-style listing descriptions for residential properties.
+Be factual and neutral; avoid any Fair Housing risks (no references to protected classes,
+schools "quality", crime/safety, religion, or steering). Output:
+1) One concise paragraph (120–180 words)
+2) Then 3 short bullet highlights.
+`;
+
+export async function POST(req: NextRequest) {
+  try {
+    const { property, preferences } = await req.json();
+
+    const r = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: process.env.OPENAI_MODEL || "gpt-4o-mini",
+        temperature: 0.7,
+        messages: [
+          { role: "system", content: SYSTEM },
+          { role: "user", content: JSON.stringify({ property, preferences }) }
+        ],
+      }),
+    });
+
+    if (!r.ok) {
+      const t = await r.text();
+      return NextResponse.json({ error: t }, { status: 400 });
+    }
+
+    const data = await r.json();
+    const content = data?.choices?.[0]?.message?.content ?? "No content.";
+    return NextResponse.json({ content });
+  } catch (e: any) {
+    return NextResponse.json({ error: e.message }, { status: 500 });
+  }
+}
+nano app/campaigns/new/page.tsx
+"use client";
+import { useState } from "react";
+
+export default function NewCampaignPage() {
+  const [f, setF] = useState({
+    address: "", city: "", state: "", zip: "",
+    beds: "", baths: "", sqft: "", price: "", highlights: ""
+  });
+  const [out, setOut] = useState("");
+
+  const on = (e: React.ChangeEvent<HTMLInputElement|HTMLTextAreaElement>) =>
+    setF({ ...f, [e.target.name]: e.target.value });
+
+  const go = async () => {
+    setOut("Generating…");
+    const res = await fetch("/api/generate/listing", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        property: {
+          address: f.address, city: f.city, state: f.state, zip: f.zip,
+          beds: Number(f.beds||0), baths: Number(f.baths||0),
+          sqft: Number(f.sqft||0), price: f.price, highlights: f.highlights
+        },
+        preferences: { tone: "balanced", length: "mls_standard" }
+      })
+    });
+    const data = await res.json();
+    setOut(data.content || data.error || "No response.");
+  };
+
+  return (
+    <div className="max-w-3xl mx-auto p-6 space-y-4">
+      <h1 className="text-2xl font-semibold">New Listing</h1>
+      <div className="grid grid-cols-2 gap-3">
+        <input className="border rounded p-2" name="address" placeholder="Address" onChange={on}/>
+        <input className="border rounded p-2" name="city" placeholder="City" onChange={on}/>
+        <input className="border rounded p-2" name="state" placeholder="State" onChange={on}/>
+        <input className="border rounded p-2" name="zip" placeholder="ZIP" onChange={on}/>
+        <input className="border rounded p-2" name="beds" placeholder="Beds" onChange={on}/>
+        <input className="border rounded p-2" name="baths" placeholder="Baths" onChange={on}/>
+        <input className="border rounded p-2" name="sqft" placeholder="Sq Ft" onChange={on}/>
+        <input className="border rounded p-2" name="price" placeholder="Price" onChange={on}/>
+      </div>
+      <textarea className="border rounded p-2 w-full" rows={4}
+        name="highlights" placeholder="Highlights (comma-separated)" onChange={on}/>
+      <button onClick={go} className="px-4 py-2 rounded bg-black text-white">Generate Listing</button>
+      {out && <pre className="mt-4 whitespace-pre-wrap border rounded p-3 bg-gray-50">{out}</pre>}
+    </div>
+  );
+}
+git commit -m "feat: listing generator API + campaign form"
+git push
+
