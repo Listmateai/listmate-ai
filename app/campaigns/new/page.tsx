@@ -1,0 +1,56 @@
+
+git add app/campaigns/new/page.tsx
+git commit -m "fix: add campaign form page"
+git push
+"use client";
+import { useState } from "react";
+
+export default function NewCampaignPage() {
+  const [f, setF] = useState({
+    address: "", city: "", state: "", zip: "",
+    beds: "", baths: "", sqft: "", price: "", highlights: ""
+  });
+  const [out, setOut] = useState("");
+
+  const on = (e: React.ChangeEvent<HTMLInputElement|HTMLTextAreaElement>) =>
+    setF({ ...f, [e.target.name]: e.target.value });
+
+  const go = async () => {
+    setOut("Generating…");
+    const res = await fetch("/api/generate/listing", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        property: {
+          address: f.address, city: f.city, state: f.state, zip: f.zip,
+          beds: Number(f.beds||0), baths: Number(f.baths||0),
+          sqft: Number(f.sqft||0), price: f.price, highlights: f.highlights
+        },
+        preferences: { tone: "balanced", length: "mls_standard" }
+      })
+    });
+    const data = await res.json();
+    setOut(data.content || data.error || "No response.");
+  };
+
+  return (
+    <div className="max-w-3xl mx-auto p-6 space-y-4">
+      <h1 className="text-2xl font-semibold">New Listing</h1>
+      <div className="grid grid-cols-2 gap-3">
+        <input className="border rounded p-2" name="address" placeholder="Address" onChange={on}/>
+        <input className="border rounded p-2" name="city" placeholder="City" onChange={on}/>
+        <input className="border rounded p-2" name="state" placeholder="State" onChange={on}/>
+        <input className="border rounded p-2" name="zip" placeholder="ZIP" onChange={on}/>
+        <input className="border rounded p-2" name="beds" placeholder="Beds" onChange={on}/>
+        <input className="border rounded p-2" name="baths" placeholder="Baths" onChange={on}/>
+        <input className="border rounded p-2" name="sqft" placeholder="Sq Ft" onChange={on}/>
+        <input className="border rounded p-2" name="price" placeholder="Price" onChange={on}/>
+      </div>
+      <textarea className="border rounded p-2 w-full" rows={4}
+        name="highlights" placeholder="Highlights (comma-separated)" onChange={on}/>
+      <button onClick={go} className="px-4 py-2 rounded bg-black text-white">Generate Listing</button>
+      {out && <pre className="mt-4 whitespace-pre-wrap border rounded p-3 bg-gray-50">{out}</pre>}
+    </div>
+  );
+}
+
